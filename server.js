@@ -31,7 +31,7 @@ app.use("/api/inventory", require("./routes/inventory"));
 app.use("/api/earnings", require("./routes/earnings"));
 app.use("/api/admin", require("./routes/admin"));
 
-const PORT = 5777;
+const PORT = process.env.PORT || 5777;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
