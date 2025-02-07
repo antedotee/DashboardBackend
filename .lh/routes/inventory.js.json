@@ -1,0 +1,22 @@
+{
+    "sourceFile": "routes/inventory.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1738897085016,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1738897119282,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,9 @@\n const router = express.Router();\n const auth = require('../middleware/auth');\n const Inventory = require('../models/Inventory');\n const Book = require('../models/Book');\n-\n+const mongoose = require('mongoose');\n router.post('/update', auth, async (req, res) => {\n     try {\n         const { bookId, quantity, type, notes } = req.body;\n         \n"
+                }
+            ],
+            "date": 1738897085016,
+            "name": "Commit-0",
+            "content": "// Path: /Users/devanshydv/Documents/Backend/routes/inventory.js\nconst express = require('express');\nconst router = express.Router();\nconst auth = require('../middleware/auth');\nconst Inventory = require('../models/Inventory');\nconst Book = require('../models/Book');\n\nrouter.post('/update', auth, async (req, res) => {\n    try {\n        const { bookId, quantity, type, notes } = req.body;\n        \n        let inventory = await Inventory.findOne({ book: bookId });\n        if (!inventory) {\n            inventory = new Inventory({\n                book: bookId,\n                author: req.user.userId,\n                quantityTotal: 0,\n                quantityAvailable: 0,\n                transactions: []\n            });\n        }\n\n        if (type === 'addition') {\n            inventory.quantityTotal += quantity;\n            inventory.quantityAvailable += quantity;\n        } else if (type === 'sale' || type === 'complimentary') {\n            inventory.quantityAvailable -= quantity;\n        }\n\n        inventory.transactions.push({\n            type,\n            quantity,\n            notes,\n            date: new Date()\n        });\n\n        inventory.lastUpdated = new Date();\n        await inventory.save();\n\n        res.json(inventory);\n    } catch (error) {\n        res.status(400).json({ message: error.message });\n    }\n});\n\n// Get inventory status for a specific book\nrouter.get('/status/:bookId', auth, async (req, res) => {\n    try {\n        const { bookId } = req.params;\n        const authorId = req.user.userId;\n\n        // Get book details first\n        const book = await Book.findOne({\n            _id: new mongoose.Types.ObjectId(bookId),\n            author: new mongoose.Types.ObjectId(authorId)\n        });\n\n        if (!book) {\n            return res.status(404).json({ message: 'Book not found' });\n        }\n\n        // Get inventory details\n        const inventory = await Inventory.findOne({\n            book: new mongoose.Types.ObjectId(bookId),\n            author: new mongoose.Types.ObjectId(authorId)\n        }).populate('book', 'title price');\n\n        if (!inventory) {\n            // Create initial inventory if it doesn't exist\n            const newInventory = new Inventory({\n                book: bookId,\n                author: authorId,\n                quantityTotal: book.publishingDetails.quantity,\n                quantityAvailable: book.publishingDetails.quantity - book.publishingDetails.soldCopies,\n                transactions: [{\n                    type: 'addition',\n                    quantity: book.publishingDetails.quantity,\n                    date: new Date(),\n                    notes: 'Initial stock'\n                }]\n            });\n\n            await newInventory.save();\n            await newInventory.populate('book', 'title price');\n            return res.json(newInventory);\n        }\n\n        res.json(inventory);\n    } catch (error) {\n        console.error('Inventory status error:', error);\n        res.status(500).json({ message: error.message });\n    }\n});\n\nmodule.exports = router;"
+        }
+    ]
+}

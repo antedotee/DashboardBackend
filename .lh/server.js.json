@@ -1,0 +1,34 @@
+{
+    "sourceFile": "server.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 4,
+            "patches": [
+                {
+                    "date": 1738896616911,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1738898028602,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,33 @@\n+// Path: /Users/devanshdv/Documents/Backend/server.js\n+const express = require('express');\n+const cors = require('cors');\n+const connectDB = require('./config/db');\n+require('dotenv').config();\n+\n+const app = express();\n+\n+// Connect to MongoDB\n+connectDB();\n+\n+// Middleware\n+// Update CORS configuration\n+app.use(cors({\n+    origin: 'http://localhost:3000', // Your frontend URL\n+    credentials: true\n+}));\n+app.use(express.json());\n+\n+// Routes\n+\n+app.use('/api/auth', require('./routes/auth'));\n+app.use('/api/authors', require('./routes/author'));\n+app.use('/api/books', require('./routes/book'));\n+app.use('/api/dashboard', require('./routes/dashboard'));\n+app.use('/api/sales', require('./routes/sales'));\n+app.use('/api/inventory', require('./routes/inventory'));\n+app.use('/api/earnings', require('./routes/earnings'));\n+\n+const PORT = process.env.PORT || 5000;\n+app.listen(PORT, () => {\n+    console.log(`Server is running on port ${PORT}`);\n+});\n"
+                },
+                {
+                    "date": 1738898819678,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -25,8 +25,9 @@\n app.use('/api/dashboard', require('./routes/dashboard'));\n app.use('/api/sales', require('./routes/sales'));\n app.use('/api/inventory', require('./routes/inventory'));\n app.use('/api/earnings', require('./routes/earnings'));\n+app.use('/api/admin', require('./routes/admin'));\n \n const PORT = process.env.PORT || 5000;\n app.listen(PORT, () => {\n     console.log(`Server is running on port ${PORT}`);\n"
+                },
+                {
+                    "date": 1738899140189,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -14,9 +14,12 @@\n app.use(cors({\n     origin: 'http://localhost:3000', // Your frontend URL\n     credentials: true\n }));\n-app.use(express.json());\n+app.use(express.json());app.use(cors({\n+  origin: 'http://localhost:3000',\n+  credentials: true\n+}));\n \n // Routes\n \n app.use('/api/auth', require('./routes/auth'));\n@@ -31,33 +34,4 @@\n const PORT = process.env.PORT || 5000;\n app.listen(PORT, () => {\n     console.log(`Server is running on port ${PORT}`);\n });\n-// Path: /Users/devanshdv/Documents/Backend/server.js\n-const express = require('express');\n-const cors = require('cors');\n-const connectDB = require('./config/db');\n-require('dotenv').config();\n-\n-const app = express();\n-\n-// Connect to MongoDB\n-connectDB();\n-\n-// Middleware\n-app.use(cors());\n-app.use(express.json());\n-\n-// Routes\n-app.use('/api/dashboard', require('./routes/dashboard'));\n-app.use('/api/auth', require('./routes/auth'));\n-app.use('/api/authors', require('./routes/author'));\n-app.use('/api/books', require('./routes/book'));\n-app.use('/api/dashboard', require('./routes/dashboard'));\n-app.use('/api/sales', require('./routes/sales'));\n-app.use('/api/inventory', require('./routes/inventory'));\n-app.use('/api/earnings', require('./routes/earnings'));\n-\n-const PORT = process.env.PORT || 5000;\n-app.listen(PORT, () => {\n-    console.log(`Server is running on port ${PORT}`);\n-});\n"
+                },
+                {
+                    "date": 1738899145710,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -15,8 +15,12 @@\n     origin: 'http://localhost:3000', // Your frontend URL\n     credentials: true\n }));\n app.use(express.json());\n+app.use(cors({\n+    origin: 'http://localhost:3000',\n+    credentials: true\n+}));\n \n // Routes\n \n app.use('/api/auth', require('./routes/auth'));\n"
+                }
+            ],
+            "date": 1738896616911,
+            "name": "Commit-0",
+            "content": "// Path: /Users/devanshdv/Documents/Backend/server.js\nconst express = require('express');\nconst cors = require('cors');\nconst connectDB = require('./config/db');\nrequire('dotenv').config();\n\nconst app = express();\n\n// Connect to MongoDB\nconnectDB();\n\n// Middleware\napp.use(cors());\napp.use(express.json());\n\n// Routes\napp.use('/api/dashboard', require('./routes/dashboard'));\napp.use('/api/auth', require('./routes/auth'));\napp.use('/api/authors', require('./routes/author'));\napp.use('/api/books', require('./routes/book'));\napp.use('/api/dashboard', require('./routes/dashboard'));\napp.use('/api/sales', require('./routes/sales'));\napp.use('/api/inventory', require('./routes/inventory'));\napp.use('/api/earnings', require('./routes/earnings'));\n\nconst PORT = process.env.PORT || 5000;\napp.listen(PORT, () => {\n    console.log(`Server is running on port ${PORT}`);\n});\n"
+        }
+    ]
+}

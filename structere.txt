@@ -1,0 +1,20 @@
+backend/
+  ├── config/
+  │   └── db.js
+  ├── controllers/
+  │   ├── authController.js
+  │   ├── authorController.js
+  │   └── bookController.js
+  ├── middleware/
+  │   ├── auth.js
+  │   └── roleCheck.js
+  ├── models/
+  │   ├── User.js
+  │   ├── Book.js
+  │   └── Transaction.js
+  ├── routes/
+  │   ├── auth.js
+  │   ├── author.js
+  │   └── book.js
+  ├── .env
+  └── server.js

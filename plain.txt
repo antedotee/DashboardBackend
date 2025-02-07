@@ -1,0 +1,261 @@
+First, let's create automated earnings calculations:
+
+javascriptCopy// utils/earningsCalculator.js
+const moment = require('moment');
+const Sale = require('../models/Sale');
+const Earning = require('../models/Earning');
+
+const calculateMonthlyEarnings = async (authorId, year, month) => {
+    try {
+        const startDate = moment([year, month - 1]).startOf('month');
+        const endDate = moment(startDate).endOf('month');
+
+        // Aggregate sales data for the month
+        const monthlyData = await Sale.aggregate([
+            {
+                $match: {
+                    author: authorId,
+                    date: {
+                        $gte: startDate.toDate(),
+                        $lte: endDate.toDate()
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        book: '$book',
+                        year: { $year: '$date' },
+                        month: { $month: '$date' }
+                    },
+                    totalRoyalty: { $sum: '$royaltyEarned' },
+                    totalSales: { $sum: '$quantity' }
+                }
+            }
+        ]);
+
+        // Update or create earnings records
+        const earningsPromises = monthlyData.map(async (data) => {
+            const earning = await Earning.findOneAndUpdate(
+                {
+                    author: authorId,
+                    book: data._id.book,
+                    year: data._id.year,
+                    month: data._id.month
+                },
+                {
+                    $set: {
+                        royaltyEarned: data.totalRoyalty,
+                        salesCount: data.totalSales
+                    }
+                },
+                { upsert: true, new: true }
+            );
+            return earning;
+        });
+
+        return Promise.all(earningsPromises);
+    } catch (error) {
+        console.error('Error calculating earnings:', error);
+        throw error;
+    }
+};
+
+module.exports = { calculateMonthlyEarnings };
+
+Now, let's create comprehensive dashboard endpoints:
+
+javascriptCopy// routes/dashboard.js
+const express = require('express');
+const router = express.Router();
+const auth = require('../middleware/auth');
+const moment = require('moment');
+const Book = require('../models/Book');
+const Sale = require('../models/Sale');
+const Inventory = require('../models/Inventory');
+const Earning = require('../models/Earning');
+
+// Get complete dashboard data
+router.get('/summary', auth, async (req, res) => {
+    try {
+        const authorId = req.user.userId;
+        const currentDate = moment();
+        const startOfMonth = moment().startOf('month');
+        const startOfYear = moment().startOf('year');
+
+        // Get overall statistics
+        const overallStats = await Book.aggregate([
+            { $match: { author: authorId } },
+            {
+                $group: {
+                    _id: null,
+                    totalBooks: { $sum: 1 },
+                    totalInventory: { $sum: '$publishingDetails.quantity' },
+                    avgRoyaltyPercentage: { $avg: '$publishingDetails.royaltyPercentage' }
+                }
+            }
+        ]);
+
+        // Get monthly earnings
+        const monthlyEarnings = await Sale.aggregate([
+            {
+                $match: {
+                    author: authorId,
+                    date: { $gte: startOfMonth.toDate() }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalRoyalty: { $sum: '$royaltyEarned' },
+                    totalSales: { $sum: '$quantity' }
+                }
+            }
+        ]);
+
+        // Get yearly earnings trend
+        const yearlyTrend = await Sale.aggregate([
+            {
+                $match: {
+                    author: authorId,
+                    date: { $gte: startOfYear.toDate() }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        month: { $month: '$date' }
+                    },
+                    earnings: { $sum: '$royaltyEarned' },
+                    sales: { $sum: '$quantity' }
+                }
+            },
+            { $sort: { '_id.month': 1 } }
+        ]);
+
+        // Get top performing books
+        const topBooks = await Sale.aggregate([
+            { $match: { author: authorId } },
+            {
+                $group: {
+                    _id: '$book',
+                    totalSales: { $sum: '$quantity' },
+                    totalRoyalty: { $sum: '$royaltyEarned' }
+                }
+            },
+            { $sort: { totalSales: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // Get inventory alerts
+        const inventoryAlerts = await Inventory.find({
+            author: authorId,
+            quantityAvailable: { $lt: 20 } // Alert threshold
+        }).populate('book', 'title');
+
+        // Get recent transactions
+        const recentTransactions = await Sale.find({ author: authorId })
+            .sort({ date: -1 })
+            .limit(5)
+            .populate('book', 'title');
+
+        // Combine all data
+        const dashboardData = {
+            overallStats: overallStats[0] || {
+                totalBooks: 0,
+                totalInventory: 0,
+                avgRoyaltyPercentage: 0
+            },
+            monthlyPerformance: monthlyEarnings[0] || {
+                totalRoyalty: 0,
+                totalSales: 0
+            },
+            yearlyTrend,
+            topBooks: await Book.populate(topBooks, { path: '_id', select: 'title' }),
+            inventoryAlerts,
+            recentTransactions,
+            lastUpdated: new Date()
+        };
+
+        res.json(dashboardData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get genre-wise analytics
+router.get('/genre-analytics', auth, async (req, res) => {
+    try {
+        const genreStats = await Book.aggregate([
+            { $match: { author: req.user.userId } },
+            {
+                $group: {
+                    _id: '$genre',
+                    bookCount: { $sum: 1 },
+                    totalSales: { $sum: '$publishingDetails.soldCopies' },
+                    avgRoyalty: { $avg: '$publishingDetails.royaltyEarned' }
+                }
+            }
+        ]);
+
+        res.json(genreStats);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+module.exports = router;
+
+Add a scheduler for automated earnings calculation:
+
+javascriptCopy// utils/scheduler.js
+const cron = require('node-cron');
+const moment = require('moment');
+const { calculateMonthlyEarnings } = require('./earningsCalculator');
+const User = require('../models/User');
+
+// Schedule monthly earnings calculation
+cron.schedule('0 0 1 * *', async () => {
+    try {
+        const authors = await User.find({ role: 'author' });
+        const previousMonth = moment().subtract(1, 'months');
+        
+        for (const author of authors) {
+            await calculateMonthlyEarnings(
+                author._id,
+                previousMonth.year(),
+                previousMonth.month() + 1
+            );
+        }
+        console.log('Monthly earnings calculated successfully');
+    } catch (error) {
+        console.error('Error in scheduled earnings calculation:', error);
+    }
+});
+
+Update your server.js to include the new routes and scheduler:
+
+javascriptCopy// server.js
+const scheduler = require('./utils/scheduler');
+
+// ... your existing code ...
+
+app.use('/api/dashboard', require('./routes/dashboard'));
+
+// Don't forget to install required dependencies:
+// npm install moment node-cron
+This implementation provides:
+
+Automated monthly earnings calculations
+Comprehensive dashboard data including:
+
+Overall statistics
+Monthly performance
+Yearly trends
+Top performing books
+Inventory alerts
+Recent transactions
+
+
+Genre-wise analytics
+Scheduled tasks for automated calculations
